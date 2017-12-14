@@ -56,6 +56,8 @@ public class WinePairingController {
                 }
             }
 
+            System.out.println("IN: " + foodType + " OUT: " + (WineType[]) types.toArray(new WineType[types.size()]));
+
             return new WinePairingResponse (pairingCounter.incrementAndGet(), SUCCESS, SUCCESS, (WineType[]) types.toArray(new WineType[types.size()]));
         } catch (Throwable e) {
             return new WinePairingResponse (pairingCounter.incrementAndGet(), ERROR, UNKOWN_FOOD, new WineType[0]);
