@@ -51,6 +51,11 @@ public class WinePairingController {
                     types.add(WineType.BOLD_RED);
                     break;
                 }
+                case WHITE_MEAT: {
+                    types.add(WineType.LIGHT_RED);
+                    types.add(WineType.SPARKLING);
+                    break;
+                }
                 default: {
                     types.add(WineType.ROSE);
                 }
