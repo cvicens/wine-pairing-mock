@@ -57,7 +57,7 @@ public class WinePairingController {
                     break;
                 }
                 default: {
-                    types.add(WineType.ROSE);
+                    types.add(WineType.BOLD_RED);
                 }
             }
 
