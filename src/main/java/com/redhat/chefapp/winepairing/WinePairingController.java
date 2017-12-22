@@ -2,6 +2,7 @@ package com.redhat.chefapp.winepairing;
 
 import java.util.List;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicLong;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -56,7 +57,7 @@ public class WinePairingController {
             }
 
 
-            System.out.println("IN: " + wineType + " OUT: " + (WineType[]) wines.toArray(new WineType[wines.size()]));
+            System.out.println("IN: " + wineType + " OUT: " + Arrays.toString((Wine[]) wines.toArray(new Wine[wines.size()])));
 
             return new WineRepositoryResponse (wineRepositoryCounter.incrementAndGet(), SUCCESS, SUCCESS, (Wine[]) wines.toArray(new Wine[wines.size()]));
         } catch (Throwable e) {
