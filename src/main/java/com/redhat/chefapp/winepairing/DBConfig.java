@@ -9,15 +9,22 @@ import com.mongodb.MongoClient;
 
 @Configuration
 public class DBConfig extends AbstractMongoConfiguration{
+    private static final String MONGO_DBNAME = "MONGO_DBNAME";
+    private static final String MONGO_HOSTNAME = "MONGO_HOSTNAME";
+    private static final String MONGO_PORT = "MONGO_PORT";
+    
     @Override
     @Bean
     public Mongo mongo() throws Exception {
-        return new MongoClient("localhost:27017");
+        String hostname = System.getenv(MONGO_HOSTNAME) != null ? System.getenv(MONGO_HOSTNAME) : "localhost";
+        String port = System.getenv(MONGO_PORT) != null ? System.getenv(MONGO_PORT) : "27017";
+
+        return new MongoClient(hostname + ":" + port);
     }
 
     @Override
     protected String getDatabaseName() {
-        return "mydb";
+        return System.getenv(MONGO_DBNAME) != null ? System.getenv(MONGO_DBNAME) : "mydb";
     }
 }
 

@@ -49,8 +49,8 @@ public class WinePairingController {
     public WineRepositoryResponse wine (@RequestParam(value="wineType", defaultValue=UNKOWN) String wineType, 
                                         @RequestParam(value="region", defaultValue=UNKOWN_REGION) String region) {
         try {
-            WineType _wineType = WineType.valueOf(wineType);;
-            List<Wine> wines = wineRepository.findByTypeAndRegion(_wineType, region);
+            WineType _wineType = WineType.valueOf(wineType.toUpperCase());
+            List<Wine> wines = wineRepository.findByTypeAndRegion(_wineType, region.toUpperCase());
 
             if (_wineType.equals(WineType.UNKOWN)) {
                 return new WineRepositoryResponse (wineRepositoryCounter.incrementAndGet(), "ERROR", UNKOWN_WINE_TYPE, new Wine[0]);
@@ -70,8 +70,8 @@ public class WinePairingController {
         wineRepository.deleteAll();
 
         // save a couple of wines
-		wineRepository.save(new Wine(WineType.DRY_WHITE, 2016, "Bodegas Terras Gauda 2016", "Albariño", "Bodegas Terras Gauda", "Spain", "70% Albariño, 18% Caiño y 12% Loureiro", "Golden", "Clear, expresive", "Acid, strong, fruity", "12.5%"));
-		wineRepository.save(new Wine(WineType.BOLD_RED, 2013, "Sierra Cantabria Cuvee 2013", "Rioja", "Bodegas y Viñedos Sierra Cantabria", "Spain", "100% Tempranillo", "Cherry red", "Elegant, intense", "Balanced, cocoa and red fruits", "14%"));
+		wineRepository.save(new Wine(WineType.DRY_WHITE, 2016, "Bodegas Terras Gauda 2016", "ALBARIÑO", "Bodegas Terras Gauda", "Spain", "70% Albariño, 18% Caiño y 12% Loureiro", "Golden", "Clear, expresive", "Acid, strong, fruity", "12.5%"));
+		wineRepository.save(new Wine(WineType.BOLD_RED, 2013, "Sierra Cantabria Cuvee 2013", "RIOJA", "Bodegas y Viñedos Sierra Cantabria", "Spain", "100% Tempranillo", "Cherry red", "Elegant, intense", "Balanced, cocoa and red fruits", "14%"));
 
 
         repository.deleteAll();
