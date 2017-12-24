@@ -23,15 +23,15 @@ public class DBConfig extends AbstractMongoConfiguration{
         String port = System.getenv(MONGODB_PORT) != null ? System.getenv(MONGODB_PORT) : "27017";
         String user = System.getenv(MONGODB_USER);
         String pass = System.getenv(MONGODB_PASSWORD);
-        String ase = System.getenv(MONGODB_DATABASE);
+        String authSource = System.getenv(MONGODB_DATABASE);
         
         String uri = String.format("mongodb://%s/%s", hostname, port);
         if (user != null && pass != null) {
             uri = String.format("mongodb://%s:%s@%s/%s", user, pass, hostname, port);
         }
 
-        if (ase != null) {
-            uri += "?ase=" + ase;
+        if (authSource != null) {
+            uri += "?authSource=" + authSource;
         }
 
         System.out.println("uri: " + uri);
