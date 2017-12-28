@@ -1,14 +1,13 @@
 apiVersion: v1
 kind: Template
 metadata:
-  creationTimestamp: null
   name: wine-template
   annotations:
-    openshift.io/display-name: "Wine Project" 
-    description: "Example project Spring Boot microservice with MongoDB\n\nFor more information see https://github.com/cvicens/wine-pairing-mock" 
+    openshift.io/display-name: "Wine Application" 
+    description: "Example application based on a Spring Boot microservice plus MongoDB\n\nFor more information see https://github.com/cvicens/wine-pairing-mock" 
     tags: "spring-boot,mongodb" 
-    iconClass: "icon-java" 
-  message: "Your credentials are ${MONGODB_USER}:${MONGODB_PASSWORD} with admin password: ${MONGODB_ADMIN_PASSWORD}"
+    iconClass: "icon-spring" 
+  message: "Your credentials for MongoDB are ${MONGODB_USER}:${MONGODB_PASSWORD} with admin password: ${MONGODB_ADMIN_PASSWORD}"
   
 objects:
 
@@ -44,6 +43,7 @@ objects:
     name: ${DATABASE_SERVICE_NAME}
     labels:
       application: ${NAME}
+      deploymentConfig: ${NAME}
     annotations:
       description: Defines how to deploy the database
   spec:
@@ -180,13 +180,14 @@ objects:
   kind: DeploymentConfig
   metadata:
     name: ${NAME}
+    # Labels, we'll use deploymentConfig as selector in our service
     labels:
-      app: ${NAME}
+      deploymentConfig: ${NAME}
+      application: ${NAME}
   spec:
     replicas: 1
     selector:
-      app: ${NAME}
-      deploymentconfig: ${NAME}
+      deploymentConfig: ${NAME}
     strategy:
       activeDeadlineSeconds: 21600
       resources: {}
@@ -199,9 +200,11 @@ objects:
       type: Rolling
     template:
       metadata:
+        # Labels copied to every POD created
+        # Important: Selector based on deploymentConfig
         labels:
-          app: ${NAME}
-          deploymentconfig: ${NAME}
+          deploymentConfig: ${NAME}
+          application: ${NAME}
       spec:
         containers:
         - env:
@@ -231,6 +234,10 @@ objects:
           name: ${NAME}
           ports:
           - containerPort: 8080
+            protocol: TCP
+          - containerPort: 8443
+            protocol: TCP
+          - containerPort: 8778
             protocol: TCP
           livenessProbe:
             failureThreshold: 10
@@ -278,19 +285,19 @@ objects:
   metadata:
     name: ${NAME}
     labels:
-      app: ${NAME}
+      application: ${NAME}
+      deploymentConfig: ${NAME}
     annotations:
-      description: Exposes and load balances the application pods
-      service.alpha.openshift.io/dependencies: '[{"name": "${DATABASE_SERVICE_NAME}",
-        "kind": "Service"}]'
+      description: The application's http port.
+      service.alpha.openshift.io/dependencies: '[{"name": "${DATABASE_SERVICE_NAME}", "kind": "Service"}]'
   spec:
     ports:
-    - name: web
+    - name: 8080-tcp
       port: 8080
       targetPort: 8080
+    # Selects PODs labelled with deploymentConfig === ${NAME}
     selector:
-      name: ${NAME}
-    sessionAffinity: None
+      deploymentConfig: ${NAME}
 
 - apiVersion: v1
   kind: Route
