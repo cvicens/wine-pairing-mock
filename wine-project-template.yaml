@@ -3,33 +3,57 @@ kind: Template
 metadata:
   creationTimestamp: null
   name: wine-template
+  annotations:
+    openshift.io/display-name: "Wine Project" 
+    description: "Example project Spring Boot microservice with MongoDB\n\nFor more information see https://github.com/cvicens/wine-pairing-mock" 
+    tags: "spring-boot,mongodb" 
+    iconClass: "icon-java" 
+  message: "Your credentials are ${MONGODB_USER}:${MONGODB_PASSWORD} with admin password: ${MONGODB_ADMIN_PASSWORD}"
+  
 objects:
 
+# Data exposed
+- apiVersion: v1
+  kind: Secret
+  metadata:
+    name: ${NAME}
+  stringData:
+    database-admin-password: ${MONGODB_ADMIN_PASSWORD}
+    database-password: ${MONGODB_PASSWORD}
+    database-user: ${MONGODB_USER}
+    
 # Mongo persistent
+- apiVersion: v1
+  kind: PersistentVolumeClaim
+  metadata:
+    name: ${DATABASE_SERVICE_NAME}
+  spec:
+    accessModes:
+    - ReadWriteOnce
+    resources:
+      requests:
+        storage: ${VOLUME_CAPACITY}
+
 - apiVersion: v1
   kind: DeploymentConfig
   metadata:
-    creationTimestamp: null
-    generation: 1
+    name: ${DATABASE_SERVICE_NAME}
     labels:
-      app: mongodb-persistent
-      template: mongodb-persistent-template
-    name: mongodb
+      application: ${NAME}
+    annotations:
+      description: Defines how to deploy the database
   spec:
     replicas: 1
     selector:
-      name: mongodb
+      name: ${DATABASE_SERVICE_NAME}
     strategy:
-      activeDeadlineSeconds: 21600
-      recreateParams:
-        timeoutSeconds: 600
-      resources: {}
       type: Recreate
     template:
       metadata:
-        creationTimestamp: null
         labels:
-          name: mongodb
+          name: ${DATABASE_SERVICE_NAME}
+          application: ${NAME}
+        name: ${DATABASE_SERVICE_NAME}
       spec:
         containers:
         - env:
@@ -37,33 +61,28 @@ objects:
             valueFrom:
               secretKeyRef:
                 key: database-user
-                name: mongodb
+                name: ${NAME}
           - name: MONGODB_PASSWORD
-            value:
+            valueFrom:
               secretKeyRef:
                 key: database-password
-                name: mongodb
+                name: ${NAME}
+          - name: MONGODB_DATABASE
+            value: ${DATABASE_NAME}
           - name: MONGODB_ADMIN_PASSWORD
-            value:
+            valueFrom:
               secretKeyRef:
                 key: database-admin-password
-                name: mongodb
-          - name: MONGODB_DATABASE
-            value: sampledb
-          image: centos/mongodb-32-centos7@sha256:3cb6b564646a1364ceff1d3fcd67759054b2bddfb8c2ab5175552cf87c14c01c
-          imagePullPolicy: IfNotPresent
+                name: ${NAME}
+          image: mongodb
           livenessProbe:
-            failureThreshold: 3
             initialDelaySeconds: 30
-            periodSeconds: 10
-            successThreshold: 1
             tcpSocket:
               port: 27017
             timeoutSeconds: 1
           name: mongodb
           ports:
           - containerPort: 27017
-            protocol: TCP
           readinessProbe:
             exec:
               command:
@@ -72,32 +91,18 @@ objects:
               - -c
               - mongo 127.0.0.1:27017/$MONGODB_DATABASE -u $MONGODB_USER -p $MONGODB_PASSWORD
                 --eval="quit()"
-            failureThreshold: 3
             initialDelaySeconds: 3
-            periodSeconds: 10
-            successThreshold: 1
             timeoutSeconds: 1
           resources:
             limits:
-              memory: 512Mi
-          securityContext:
-            capabilities: {}
-            privileged: false
-          terminationMessagePath: /dev/termination-log
-          terminationMessagePolicy: File
+              memory: ${MEMORY_MONGODB_LIMIT}
           volumeMounts:
           - mountPath: /var/lib/mongodb/data
-            name: mongodb-data
-        dnsPolicy: ClusterFirst
-        restartPolicy: Always
-        schedulerName: default-scheduler
-        securityContext: {}
-        terminationGracePeriodSeconds: 30
+            name: ${DATABASE_SERVICE_NAME}-data
         volumes:
-        - name: mongodb-data
+        - name: ${DATABASE_SERVICE_NAME}-data
           persistentVolumeClaim:
-            claimName: mongodb
-    test: false
+            claimName: ${DATABASE_SERVICE_NAME}
     triggers:
     - imageChangeParams:
         automatic: true
@@ -105,56 +110,79 @@ objects:
         - mongodb
         from:
           kind: ImageStreamTag
-          name: mongodb:3.2
-          namespace: openshift
+          name: mongodb:${MONGODB_VERSION}
+          namespace: ${NAMESPACE}
       type: ImageChange
     - type: ConfigChange
-  status:
-    availableReplicas: 0
-    latestVersion: 0
-    observedGeneration: 0
-    replicas: 0
-    unavailableReplicas: 0
-    updatedReplicas: 0
 
 - apiVersion: v1
   kind: Service
   metadata:
+    name: ${DATABASE_SERVICE_NAME}
     annotations:
+      description: Exposes the database server
       template.openshift.io/expose-uri: mongodb://{.spec.clusterIP}:{.spec.ports[?(.name=="mongo")].port}
-    creationTimestamp: null
-    labels:
-      app: mongodb-persistent
-      template: mongodb-persistent-template
-    name: mongodb
   spec:
     ports:
-    - name: mongo
+    - name: mongodb
       port: 27017
-      protocol: TCP
       targetPort: 27017
     selector:
-      name: mongodb
-    sessionAffinity: None
-    type: ClusterIP
-  status:
-    loadBalancer: {}
+      name: ${DATABASE_SERVICE_NAME}
 
 # Wine Microservice
 - apiVersion: v1
+  kind: ImageStream
+  metadata:
+    name: ${NAME}
+    annotations:
+      description: Keeps track of changes in the application image
+
+- apiVersion: v1
+  kind: BuildConfig
+  metadata:
+    name: ${NAME}
+    labels:
+      app: ${NAME}
+  spec:
+    output:
+      to:
+        kind: ImageStreamTag
+        name: ${NAME}:latest
+    source:
+      git:
+        ref: master
+        uri: https://github.com/cvicens/wine-pairing-mock
+      type: Git
+    strategy:
+      sourceStrategy:
+        from:
+          kind: ImageStreamTag
+          name: redhat-openjdk18-openshift:1.1
+          namespace: ${NAMESPACE}
+      type: Source
+    triggers:
+    - github:
+        secret: ${GITHUB_WEBHOOK_SECRET}
+      type: GitHub
+    - generic:
+        secret: ${GENERIC_WEBHOOK_SECRET}
+      type: Generic
+    - imageChange: {}
+      type: ImageChange
+    - type: ConfigChange
+
+- apiVersion: v1
   kind: DeploymentConfig
   metadata:
-    annotations:
-      openshift.io/generated-by: OpenShiftWebConsole
-    creationTimestamp: null
-    generation: 1
+    name: ${NAME}
     labels:
-      app: winepairing
-    name: winepairing
+      app: ${NAME}
   spec:
     replicas: 1
     selector:
-      deploymentconfig: winepairing
+      app: ${NAME}
+      deploymentconfig: ${NAME}
     strategy:
       activeDeadlineSeconds: 21600
       resources: {}
@@ -167,10 +195,9 @@ objects:
       type: Rolling
     template:
       metadata:
-        creationTimestamp: null
         labels:
-          app: winepairing
-          deploymentconfig: winepairing
+          app: ${NAME}
+          deploymentconfig: ${NAME}
       spec:
         containers:
         - env:
@@ -184,23 +211,46 @@ objects:
               secretKeyRef:
                 key: database-password
                 name: mongodb
+          - name: MONGODB_ADMIN_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                key: database-admin-password
+                name: mongodb
           - name: MONGODB_DATABASE
             value: sampledb
-          - name: MONGODB_HOSTNAME
-            value: mongodb
-          - name: MONGODB_PORT
-            value: "27017"
-          image: 172.30.1.1:5000/wine/winepairing@sha256:ad6e3fef35dd76f3014ceb065fda3cefb15d04d14eb9b5f6d96addee8fb64817
+          - name: DATABASE_SERVICE_NAME
+            value: ${DATABASE_SERVICE_NAME}
+          - name: DATABASE_SERVICE_PORT
+            value: ${DATABASE_SERVICE_PORT}
+          image: ${NAME}
           imagePullPolicy: Always
-          name: winepairing
+          name: ${NAME}
           ports:
           - containerPort: 8080
             protocol: TCP
-          - containerPort: 8443
-            protocol: TCP
-          - containerPort: 8778
-            protocol: TCP
-          resources: {}
+          livenessProbe:
+            failureThreshold: 10
+            httpGet:
+              path: /pairing
+              port: 8080
+              scheme: HTTP
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 5            
+          readinessProbe:
+            failureThreshold: 10
+            httpGet:
+              path: /pairing?foodType=FISH
+              port: 8080
+              scheme: HTTP
+            initialDelaySeconds: 30
+            periodSeconds: 5
+            successThreshold: 1
+            timeoutSeconds: 1
+          resources:
+            limits:
+              memory: ${MEMORY_LIMIT}
           terminationMessagePath: /dev/termination-log
           terminationMessagePolicy: File
         dnsPolicy: ClusterFirst
@@ -208,181 +258,132 @@ objects:
         schedulerName: default-scheduler
         securityContext: {}
         terminationGracePeriodSeconds: 30
-    test: false
     triggers:
     - imageChangeParams:
         automatic: true
         containerNames:
-        - winepairing
+        - ${NAME}
         from:
           kind: ImageStreamTag
-          name: winepairing:latest
-          namespace: wine
+          name: ${NAME}:latest
       type: ImageChange
     - type: ConfigChange
-
-- apiVersion: v1
-  kind: BuildConfig
-  metadata:
-    annotations:
-      openshift.io/generated-by: OpenShiftWebConsole
-    creationTimestamp: null
-    labels:
-      app: winepairing
-    name: winepairing
-  spec:
-    nodeSelector: null
-    output:
-      to:
-        kind: ImageStreamTag
-        name: winepairing:latest
-    postCommit: {}
-    resources: {}
-    runPolicy: Serial
-    source:
-      git:
-        ref: master
-        uri: https://github.com/cvicens/wine-pairing-mock
-      type: Git
-    strategy:
-      sourceStrategy:
-        from:
-          kind: ImageStreamTag
-          name: redhat-openjdk18-openshift:1.1
-          namespace: openshift
-      type: Source
-    triggers:
-    - generic:
-        secret: 54c959302481e754
-      type: Generic
-    - github:
-        secret: 1520a09843d89b53
-      type: GitHub
-    - imageChange: {}
-      type: ImageChange
-    - type: ConfigChange
-  status:
-    lastVersion: 0
-
-- apiVersion: v1
-  kind: ImageStream
-  metadata:
-    annotations:
-      openshift.io/generated-by: OpenShiftWebConsole
-    creationTimestamp: null
-    generation: 1
-    labels:
-      app: winepairing
-    name: winepairing
-  spec:
-    lookupPolicy:
-      local: false
-    tags:
-    - annotations: null
-      from:
-        kind: DockerImage
-        name: 172.30.1.1:5000/wine/winepairing:latest
-      generation: null
-      importPolicy: {}
-      name: latest
-      referencePolicy:
-        type: ""
-  status:
-    dockerImageRepository: ""
 
 - apiVersion: v1
   kind: Service
   metadata:
-    annotations:
-      openshift.io/generated-by: OpenShiftWebConsole
-    creationTimestamp: null
+    name: ${NAME}
     labels:
-      app: winepairing
-    name: winepairing
+      app: ${NAME}
+    annotations:
+      description: Exposes and load balances the application pods
+      service.alpha.openshift.io/dependencies: '[{"name": "${DATABASE_SERVICE_NAME}",
+        "kind": "Service"}]'
   spec:
     ports:
-    - name: 8080-tcp
+    - name: web
       port: 8080
-      protocol: TCP
       targetPort: 8080
-    - name: 8443-tcp
-      port: 8443
-      protocol: TCP
-      targetPort: 8443
-    - name: 8778-tcp
-      port: 8778
-      protocol: TCP
-      targetPort: 8778
     selector:
-      deploymentconfig: winepairing
+      name: ${NAME}
     sessionAffinity: None
-    type: ClusterIP
-  status:
-    loadBalancer: {}
 
 - apiVersion: v1
   kind: Route
   metadata:
+    name: ${NAME}
     annotations:
-      openshift.io/generated-by: OpenShiftWebConsole
-      openshift.io/host.generated: "true"
-    creationTimestamp: null
-    labels:
-      app: winepairing
-    name: winepairing
+      template.openshift.io/expose-uri: http://{.spec.host}{.spec.path}
   spec:
-    host: winepairing-wine.apps.192.168.60.120.nip.io
-    port:
-      targetPort: 8080-tcp
+    host: ${APPLICATION_DOMAIN}
     to:
       kind: Service
-      name: winepairing
-      weight: 100
-    wildcardPolicy: None
-  status:
-    ingress:
-    - conditions:
-      - lastTransitionTime: 2017-12-23T08:55:51Z
-        status: "True"
-        type: Admitted
-      host: winepairing-wine.apps.192.168.60.120.nip.io
-      routerName: router
-      wildcardPolicy: None
-
-# Data exposed
-- kind: Secret
-  apiVersion: v1
-  metadata:
-    name: mongodb
-    annotations:
-      template.openshift.io/expose-admin_password: '{.data[''database-admin-password'']}'
-      template.openshift.io/expose-password: '{.data[''database-password'']}'
-      template.openshift.io/expose-username: '{.data[''database-user'']}'
-  data:
-    database-user: ${{MONGODB_USER}}
-    database-password: ${{MONGODB_PASSWORD}}
-    database-admin-password: ${{MONGODB_ADMIN_PASSWORD}}
+      name: ${NAME}
 
 # Parameters
 parameters:
 
-- description: Wine Service database user name
-  displayName: Wine Database Username
+- description: The name assigned to all of the frontend objects defined in this template.
+  displayName: Name
+  name: NAME
+  required: true
+  value: wine-service
+
+- description: Maximum amount of memory the Spring Boot API container can use.
+  displayName: Memory Limit
+  name: MEMORY_LIMIT
+  required: true
+  value: 512Mi
+
+- description: The exposed hostname that will route to the service, if left
+    blank a value will be defaulted.
+  displayName: Application Hostname
+  name: APPLICATION_DOMAIN
+
+- displayName: Database Service Name
+  name: DATABASE_SERVICE_NAME
+  required: true
+  value: mongodb
+
+- displayName: Database Service Port
+  name: DATABASE_SERVICE_PORT
+  required: true
+  value: "27017"
+  
+- description: Maximum amount of memory the MongoDB container can use.
+  displayName: Memory Limit (MongoDB)
+  name: MEMORY_MONGODB_LIMIT
+  required: true
+  value: 512Mi
+
+- description: Volume space available for data, e.g. 512Mi, 2Gi
+  displayName: Volume Capacity
+  name: VOLUME_CAPACITY
+  required: true
+  value: 1Gi
+
+- description: Spring Boot API Service database user name
+  displayName: Database Username
   from: user[a-zA-Z0-9]{3}
   generate: expression
   name: MONGODB_USER
   required: true
 
-- description: Wine Service database user password
-  displayName: Wine Database Password
+- description: Spring Boot API Service database user password
+  displayName: Database User Password
   from: '[a-zA-Z0-9]{8}'
   generate: expression
   name: MONGODB_PASSWORD
   required: true
 
-- description: Wine Service database admin password
-  displayName: Wine Database Password
+- description: Spring Boot API Service database admin password
+  displayName: Database Admin Password
   from: '[a-zA-Z0-9]{8}'
   generate: expression
   name: MONGODB_ADMIN_PASSWORD
+  required: true
+
+- description: Version of MongoDB image to be used (2.4, 2.6, 3.2 or latest).
+  displayName: Version of MongoDB Image
+  name: MONGODB_VERSION
+  required: true
+  value: "3.2"
+
+- description: The OpenShift Namespace where the ImageStream resides.
+  displayName: Namespace
+  name: NAMESPACE
+  value: openshift
+
+- description: Spring Boot API Service GITHUB Web-Hook
+  displayName: API Service GITHUB Web-Hook
+  from: '[a-zA-Z0-9]{8}'
+  generate: expression
+  name: GITHUB_WEBHOOK_SECRET
+  required: true
+
+- description: Spring Boot API Service Generic Web-Hook
+  displayName: API Service Generic Web-Hook
+  from: '[a-zA-Z0-9]{8}'
+  generate: expression
+  name: GENERIC_WEBHOOK_SECRET
   required: true
