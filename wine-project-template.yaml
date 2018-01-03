@@ -12,8 +12,8 @@ metadata:
 objects:
 
 # Data exposed
-- apiVersion: v1
-  kind: Secret
+- kind: Secret
+  apiVersion: v1
   metadata:
     annotations:
       template.openshift.io/expose-admin_password: '{.data[''database-admin-password'']}'
@@ -25,11 +25,13 @@ objects:
     database-password: ${MONGODB_PASSWORD}
     database-user: ${MONGODB_USER}
     
-# Mongo persistent
-- apiVersion: v1
-  kind: PersistentVolumeClaim
+# MongoDB persistent volume claim
+- kind: PersistentVolumeClaim
+  apiVersion: v1
   metadata:
     name: ${DATABASE_SERVICE_NAME}
+    annotations:
+      description: Defines the PVC associated to MongoDB
   spec:
     accessModes:
     - ReadWriteOnce
@@ -37,8 +39,9 @@ objects:
       requests:
         storage: ${VOLUME_CAPACITY}
 
-- apiVersion: v1
-  kind: DeploymentConfig
+# MongoDB deployment configuration
+- kind: DeploymentConfig
+  apiVersion: v1
   metadata:
     name: ${DATABASE_SERVICE_NAME}
     labels:
@@ -119,8 +122,9 @@ objects:
       type: ImageChange
     - type: ConfigChange
 
-- apiVersion: v1
-  kind: Service
+# MongoDB service
+- kind: Service
+  apiVersion: v1
   metadata:
     name: ${DATABASE_SERVICE_NAME}
     annotations:
@@ -135,19 +139,25 @@ objects:
       name: ${DATABASE_SERVICE_NAME}
 
 # Wine Microservice
-- apiVersion: v1
-  kind: ImageStream
-  metadata:
-    name: ${NAME}
-    annotations:
-      description: Keeps track of changes in the application image
-
-- apiVersion: v1
-  kind: BuildConfig
+- kind: ImageStream
+  apiVersion: v1
   metadata:
     name: ${NAME}
     labels:
-      app: ${NAME}
+      application: ${NAME}
+    annotations:
+      description: Keeps track of changes in the application image
+  spec:
+    dockerImageRepository: ''
+    tags:
+      - name: latest
+
+- kind: BuildConfig
+  apiVersion: v1
+  metadata:
+    name: ${NAME}
+    labels:
+      application: ${NAME}
   spec:
     output:
       to:
@@ -176,8 +186,8 @@ objects:
       type: ImageChange
     - type: ConfigChange
 
-- apiVersion: v1
-  kind: DeploymentConfig
+- kind: DeploymentConfig
+  apiVersion: v1
   metadata:
     name: ${NAME}
     # Labels, we'll use deploymentConfig as selector in our service
@@ -280,8 +290,8 @@ objects:
       type: ImageChange
     - type: ConfigChange
 
-- apiVersion: v1
-  kind: Service
+- kind: Service
+  apiVersion: v1
   metadata:
     name: ${NAME}
     labels:
@@ -299,8 +309,8 @@ objects:
     selector:
       deploymentConfig: ${NAME}
 
-- apiVersion: v1
-  kind: Route
+- kind: Route
+  apiVersion: v1
   metadata:
     name: ${NAME}
     annotations:
