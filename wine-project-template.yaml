@@ -333,6 +333,16 @@ parameters:
   required: true
   value: wine-service
 
+- description: OpenTracing compatible Service Name (http://opentracing.io/)
+  displayName: Tracing Service Name
+  name: TRACING_SERVICE_NAME
+  required: false
+
+- description: OOpenTracing compatible Service Port (http://opentracing.io/)
+  displayName: Tracing Service Port
+  name: TRACING_SERVICE_PORT
+  required: false
+
 - description: Maximum amount of memory the Spring Boot API container can use.
   displayName: Memory Limit
   name: MEMORY_LIMIT

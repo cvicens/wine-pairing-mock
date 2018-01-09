@@ -6,7 +6,7 @@ import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.web.client.RestTemplate;
 import com.uber.jaeger.Configuration;
-import com.uber.jaeger.samplers.ProbabilisticSampler;
+//import com.uber.jaeger.samplers.ProbabilisticSampler;
 
 @SpringBootApplication
 public class WinePairingApplication {
