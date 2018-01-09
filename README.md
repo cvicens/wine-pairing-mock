@@ -32,6 +32,7 @@ There are two ways to deploy our template in the project we just created: one in
 
 ## Processing the template
 
+```
 $ oc create -f wine-project-template.yaml -n wine-project
 $ oc process -f wine-project-template.yaml | oc create -n wine-project -f -
 secret "mongodb" created
@@ -43,6 +44,7 @@ buildconfig "wine-service" created
 deploymentconfig "wine-service" created
 service "wine-service" created
 route "wine-service" created
+```
 
 ## Adding our template to the 'openshift' project
 
@@ -78,6 +80,7 @@ $ oc get route -n wine-project
 NAME           HOST/PORT                                              PATH      SERVICES       PORT      TERMINATION   WILDCARD
 wine-service   wine-service-wine-project.apps.192.168.60.120.nip.io             wine-service   <all>                   None
 ```
+
 Now let's invoke the 'init' endpoint to populate the DB with some test data.
 
 ```
@@ -89,6 +92,20 @@ Finally let's test the logic of the app that get the list of wines for a certain
 ```
 $ curl -k http://wine-service-wine-project.apps.192.168.60.120.nip.io/wine?wineType=DRY_WHITE&region=ALBARIÑO
 {"id":3,"status":"SUCCESS","description":"SUCCESS","wines":[]}
+```
+
+# Testing locally
+
+After cloning the repo, let's package and test.
+
+```
+$ mvn clean package -DskipTests
+```
+
+If you want to do the same using a nexus repository, modift ./nexus_openshift_settings.xml and run.
+
+```
+$ mvn -s ./nexus_openshift_settings.xml clean package -DskipTests
 ```
 
 
