@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: Template
 labels:
-  template: wine
+  template: wine-template
   app: wine
 metadata:
   name: wine-template
