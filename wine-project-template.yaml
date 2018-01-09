@@ -222,17 +222,17 @@ objects:
             valueFrom:
               secretKeyRef:
                 key: database-user
-                name: mongodb
+                name: ${DATABASE_SERVICE_NAME}
           - name: MONGODB_PASSWORD
             valueFrom:
               secretKeyRef:
                 key: database-password
-                name: mongodb
+                name: ${DATABASE_SERVICE_NAME}
           - name: MONGODB_ADMIN_PASSWORD
             valueFrom:
               secretKeyRef:
                 key: database-admin-password
-                name: mongodb
+                name: ${DATABASE_SERVICE_NAME}
           - name: MONGODB_DATABASE
             value: ${MONGODB_DATABASE}
           - name: DATABASE_SERVICE_NAME
