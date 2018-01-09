@@ -4,7 +4,7 @@
     <mirror>
       <id>Nexus</id>
       <name>Nexus Public Mirror</name>
-      <url>http://nexus3-coolstore-infra.cloudapps-a3f5.oslab.opentlc.com/repository/maven-all-public/</url>
+      <url>http://nexus3-coolstore-infra.cloudapps-579a.oslab.opentlc.com/repository/maven-all-public/</url>
       <mirrorOf>*</mirrorOf>
     </mirror>
   </mirrors>
