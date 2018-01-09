@@ -347,7 +347,7 @@ parameters:
 - displayName: Database Service Name
   name: DATABASE_SERVICE_NAME
   required: true
-  value: mongodb
+  value: wine-mongodb
   
 - description: Maximum amount of memory the MongoDB container can use.
   displayName: Memory Limit (MongoDB)
